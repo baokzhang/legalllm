@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Project artifacts
+data/
+outputs/
+logs/
+tensorboard/
+
+# Hugging Face / model cache
+cache/
+.cache/
+
+# Large model artifacts
+*.bin
+*.pt
+*.safetensors
+*.ckpt

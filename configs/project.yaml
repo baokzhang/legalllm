@@ -1,0 +1,51 @@
+project:
+  name: legal-closed-loop
+  domain: chinese-criminal-case-analysis
+
+paths:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  eval_dir: data/eval
+  output_dir: outputs
+  lm_eval_task_dir: lm_eval_tasks
+
+models:
+  base_model: Qwen/Qwen2.5-3B-Instruct
+  embedding_model: BAAI/bge-large-zh-v1.5
+
+datasets:
+  cail2018_repo: china-ai-law-challenge/cail2018
+  disc_law_sft_repo: ShengbinYue/DISC-Law-SFT
+  disc_law_sft_file: DISC-Law-SFT-Pair-QA-released.jsonl
+
+build:
+  single_charge_only: true
+  top_k_charges: 50
+  min_fact_chars: 80
+  max_fact_chars: 1200
+  max_target_samples: 3000
+  align_top_k: 5
+  select_top_n: 30000
+  lm_eval_choice_count: 6
+  mix_disc_law_sft_samples: 5000
+
+prompts:
+  legal_system: |
+    你是一名中文法律助手。请基于输入案件事实，输出严格合法、审慎、结构清晰的分析结果。
+    返回结果必须是JSON，包含:
+    - charges: 涉嫌罪名
+    - articles: 相关法条
+    - reason: 分点给出判断依据
+  legal_user_task: |
+    请阅读以下刑事案件事实，输出涉嫌罪名、相关法条与判断依据。
+
+training:
+  sft:
+    num_train_epochs: 1
+    model_max_length: 2048
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 8
+  dpo:
+    max_steps: 200
+    per_device_train_batch_size: 2
+    gradient_accumulation_steps: 8
