@@ -7,6 +7,8 @@ WORKSPACE_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
 MEDICALGPT_ROOT="${MEDICALGPT_ROOT:-${WORKSPACE_ROOT}/MedicalGPT}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
+source "${SCRIPT_DIR}/set_cache_env.sh"
+
 BASE_MODEL="${BASE_MODEL:-Qwen/Qwen2.5-3B-Instruct}"
 TRAIN_FILE_DIR="${PROJECT_ROOT}/data/processed/sft"
 OUTPUT_DIR="${PROJECT_ROOT}/outputs/sft-qwen2.5-3b-lora"
@@ -46,4 +48,5 @@ CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}" "${PYTHON_BIN}" supervised_fin
   --bf16 \
   --report_to tensorboard \
   --ddp_find_unused_parameters False \
-  --gradient_checkpointing True
+  --gradient_checkpointing True \
+  --cache_dir "${HF_HOME}/hub"

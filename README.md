@@ -93,12 +93,27 @@ export MEDICALGPT_ROOT=/root/autodl-tmp/legal-workspace/MedicalGPT
 export LMEVAL_ROOT=/root/autodl-tmp/legal-workspace/lm-evaluation-harness
 
 cd /root/autodl-tmp/legal-workspace/LegalLLM-ClosedLoop
+source scripts/set_cache_env.sh
 bash scripts/prepare_autodl_env.sh
 bash scripts/run_prepare_data.sh
 ```
 
 If you clone all three repositories as siblings, the scripts also work without
 setting these variables.
+
+## AutoDL cache placement
+
+AutoDL system disks are often small. This project defaults model and pip caches
+to `/root/autodl-tmp` through [set_cache_env.sh](/Users/zhangbaokun/Documents/DL/LLM/LegalLLM-ClosedLoop/scripts/set_cache_env.sh).
+
+Manual check:
+
+```bash
+source scripts/set_cache_env.sh
+echo $PIP_CACHE_DIR
+echo $HF_HOME
+echo $HF_DATASETS_CACHE
+```
 
 ## Why law is the default choice here
 

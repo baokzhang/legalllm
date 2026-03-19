@@ -7,6 +7,8 @@ WORKSPACE_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 LMEVAL_ROOT="${LMEVAL_ROOT:-${WORKSPACE_ROOT}/lm-evaluation-harness}"
 
+source "${SCRIPT_DIR}/set_cache_env.sh"
+
 if command -v conda >/dev/null 2>&1; then
   source "$(conda info --base)/etc/profile.d/conda.sh"
   if ! conda env list | grep -q "legal-llm"; then

@@ -12,6 +12,8 @@ WORKSPACE_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
 MEDICALGPT_ROOT="${MEDICALGPT_ROOT:-${WORKSPACE_ROOT}/MedicalGPT}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
+source "${SCRIPT_DIR}/set_cache_env.sh"
+
 BASE_MODEL="${BASE_MODEL:-Qwen/Qwen2.5-3B-Instruct}"
 LORA_DIR="$1"
 OUTPUT_DIR="$2"
