@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WORKSPACE_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
 LMEVAL_ROOT="${LMEVAL_ROOT:-${WORKSPACE_ROOT}/lm-evaluation-harness}"
 
-source "${SCRIPT_DIR}/set_cache_env.sh"
+source "${SCRIPT_DIR}/activate_project_env.sh"
 
 MODEL_DIR="$1"
 TASK_INCLUDE_PATH="${PROJECT_ROOT}/lm_eval_tasks"

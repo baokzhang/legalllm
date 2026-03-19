@@ -5,9 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WORKSPACE_ROOT="$(cd "${PROJECT_ROOT}/.." && pwd)"
 MEDICALGPT_ROOT="${MEDICALGPT_ROOT:-${WORKSPACE_ROOT}/MedicalGPT}"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
 
-source "${SCRIPT_DIR}/set_cache_env.sh"
+source "${SCRIPT_DIR}/activate_project_env.sh"
 
 BASE_MODEL="${BASE_MODEL:-Qwen/Qwen2.5-3B-Instruct}"
 TRAIN_FILE_DIR="${PROJECT_ROOT}/data/processed/dpo"

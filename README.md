@@ -74,6 +74,7 @@ bash scripts/run_bootstrap_no_gpu.sh
 This stage will:
 
 - create the Python environment
+- use a project-local `venv` under `/root/autodl-tmp/envs/legal-llm` by default
 - install dependencies
 - download public datasets
 - build the lightweight case corpus and held-out eval files
@@ -133,6 +134,10 @@ setting these variables.
 
 AutoDL system disks are often small. This project defaults model and pip caches
 to `/root/autodl-tmp` through [set_cache_env.sh](/Users/zhangbaokun/Documents/DL/LLM/LegalLLM-ClosedLoop/scripts/set_cache_env.sh).
+
+The environment bootstrap also defaults to `venv` instead of `conda`, which is
+more robust on AutoDL images that still carry stale mirror settings in
+`/root/.condarc`.
 
 Manual check:
 
