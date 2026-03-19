@@ -97,7 +97,7 @@ def main() -> None:
                         "value": build_gold_answer(row),
                     },
                 ],
-                "system": system_prompt,
+                "system_prompt": system_prompt,
             }
         )
 
