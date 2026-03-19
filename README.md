@@ -90,6 +90,25 @@ bash scripts/run_merge_adapter.sh outputs/sft-qwen2.5-3b-lora outputs/sft-qwen2.
 bash scripts/run_legal_eval.sh outputs/sft-qwen2.5-3b-merged
 ```
 
+If Hugging Face is unstable on AutoDL, you can switch data/model downloads with
+environment variables before running the bootstrap:
+
+```bash
+export LEGAL_MODEL_SOURCE=modelscope
+export LEGAL_CAIL_SOURCE=modelscope
+export LEGAL_CAIL_MODELSCOPE_ID=<your_cail_modelscope_dataset_id>
+export LEGAL_DISC_SOURCE=modelscope
+export LEGAL_DISC_MODELSCOPE_ID=Robin021/DISC-Law-SFT
+```
+
+If you already downloaded CAIL2018 or DISC-Law-SFT somewhere else, the pipeline
+also supports local paths:
+
+```bash
+export LEGAL_CAIL_LOCAL_DIR=/root/autodl-tmp/manual_datasets/cail2018
+export LEGAL_DISC_LOCAL_FILE=/root/autodl-tmp/manual_datasets/DISC-Law-SFT-Pair-QA-released.jsonl
+```
+
 ## Local workstation -> AutoDL
 
 Recommended approach:

@@ -12,11 +12,18 @@ paths:
 models:
   base_model: Qwen/Qwen2.5-3B-Instruct
   embedding_model: BAAI/bge-large-zh-v1.5
+  download_source: auto
 
 datasets:
   cail2018_repo: china-ai-law-challenge/cail2018
+  cail2018_source: auto
+  cail2018_modelscope_id: ""
+  cail2018_local_dir: ""
   disc_law_sft_repo: ShengbinYue/DISC-Law-SFT
   disc_law_sft_file: DISC-Law-SFT-Pair-QA-released.jsonl
+  disc_law_sft_source: auto
+  disc_law_sft_modelscope_id: Robin021/DISC-Law-SFT
+  disc_law_sft_local_file: ""
 
 build:
   single_charge_only: true
