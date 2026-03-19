@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +37,8 @@ def main() -> None:
     targets = read_jsonl(processed_dir / "target_dev.jsonl")
     charge_vocab = read_json(processed_dir / "charge_vocab.json")
 
-    embedding_model = config["models"]["embedding_model"]
+    embedding_model = os.getenv("EMBEDDING_MODEL_PATH", config["models"]["embedding_model"])
+    print(f"Using embedding model: {embedding_model}")
     model = SentenceTransformer(embedding_model)
 
     candidate_embeddings = encode_texts(model, [row["feature_content"] for row in candidates])

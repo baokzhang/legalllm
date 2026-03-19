@@ -101,6 +101,20 @@ export LEGAL_DISC_SOURCE=modelscope
 export LEGAL_DISC_MODELSCOPE_ID=Robin021/DISC-Law-SFT
 ```
 
+The current default config already uses ModelScope for legal datasets:
+
+- `qazwsxplkj/CAIL2018`
+- `Robin021/DISC-Law-SFT`
+
+The current default config also uses ModelScope for model prefetch. The
+bootstrap writes local paths to:
+
+- `data/processed/prefetched_model_paths.json`
+- `data/processed/prefetched_model_paths.sh`
+
+Later training scripts source that env file automatically, so SFT/DPO/merge use
+the local prefetched model path instead of pulling from Hugging Face again.
+
 If you already downloaded CAIL2018 or DISC-Law-SFT somewhere else, the pipeline
 also supports local paths:
 

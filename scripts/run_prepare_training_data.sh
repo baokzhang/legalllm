@@ -6,6 +6,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 export LEGAL_LLM_DEP_PROFILE=full
 source "${SCRIPT_DIR}/prepare_autodl_env.sh"
+source "${SCRIPT_DIR}/load_prefetched_model_paths.sh"
 
 "${PYTHON_BIN}" "${PROJECT_ROOT}/scripts/select_target_aligned_cases.py"
 "${PYTHON_BIN}" "${PROJECT_ROOT}/scripts/build_legal_sft_dataset.py"
