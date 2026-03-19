@@ -90,6 +90,16 @@ bash scripts/run_merge_adapter.sh outputs/sft-qwen2.5-3b-lora outputs/sft-qwen2.
 bash scripts/run_legal_eval.sh outputs/sft-qwen2.5-3b-merged
 ```
 
+For the first SFT run, the default script uses a small eval subset to avoid
+spending most of the time on validation. Useful overrides:
+
+```bash
+export SFT_DO_EVAL=true
+export SFT_MAX_EVAL_SAMPLES=200
+export SFT_EVAL_STEPS=500
+export SFT_PER_DEVICE_EVAL_BATCH_SIZE=8
+```
+
 If Hugging Face is unstable on AutoDL, you can switch data/model downloads with
 environment variables before running the bootstrap:
 
