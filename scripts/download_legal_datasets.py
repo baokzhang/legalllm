@@ -5,9 +5,9 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
-from datasets import DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from huggingface_hub import hf_hub_download
 
 from common import ensure_dir, load_config, project_root, resolve_path
@@ -33,11 +33,20 @@ def export_dataset_dict(dataset_dict: DatasetDict, output_dir: Path) -> None:
         dataset.to_json(str(output_file), force_ascii=False)
 
 
-def export_rows(rows: list[dict[str, Any]], output_file: Path) -> None:
+def export_rows(rows: Iterable[dict[str, Any]], output_file: Path) -> None:
     ensure_dir(output_file.parent)
     with output_file.open("w", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def export_dataset_like(dataset_obj: Any, output_file: Path) -> None:
+    ensure_dir(output_file.parent)
+    hf_dataset = getattr(dataset_obj, "_hf_ds", dataset_obj)
+    if isinstance(hf_dataset, (Dataset, IterableDataset)):
+        hf_dataset.to_json(str(output_file), force_ascii=False)
+        return
+    export_rows(hf_dataset, output_file)
 
 
 def copy_dir_contents(src_dir: Path, dst_dir: Path) -> None:
@@ -59,16 +68,14 @@ def env_or_config(env_key: str, config_value: str | None, default: str = "") -> 
     return str(config_value or default)
 
 
-def load_ms_dataset_rows(dataset_id: str, split: str) -> list[dict[str, Any]]:
+def load_ms_dataset(dataset_id: str, split: str) -> Any:
     if MsDataset is None:
         raise RuntimeError(
             "ModelScope import failed. "
             "This is often caused by an incompatible Python version in the venv. "
             f"Import detail: {MODELSCOPE_IMPORT_ERROR}"
         )
-    dataset = MsDataset.load(dataset_id, split=split)
-    hf_dataset = getattr(dataset, "_hf_ds", dataset)
-    return list(hf_dataset)
+    return MsDataset.load(dataset_id, split=split)
 
 
 def download_cail_from_huggingface(repo_id: str, output_dir: Path) -> None:
@@ -80,13 +87,17 @@ def download_cail_from_modelscope(dataset_id: str, output_dir: Path) -> None:
     if not dataset_id:
         raise RuntimeError("CAIL2018 ModelScope dataset id is empty.")
     for split in ("train", "validation", "test"):
+        output_file = output_dir / f"{split}.jsonl"
+        if output_file.exists() and output_file.stat().st_size > 0:
+            print(f"Skip existing CAIL split: {output_file}")
+            continue
         try:
-            rows = load_ms_dataset_rows(dataset_id, split)
+            dataset = load_ms_dataset(dataset_id, split)
         except Exception:
             if split == "test":
                 continue
             raise
-        export_rows(rows, output_dir / f"{split}.jsonl")
+        export_dataset_like(dataset, output_file)
 
 
 def prepare_cail_dataset(config: dict[str, Any], raw_dir: Path) -> None:
@@ -142,8 +153,12 @@ def download_disc_from_huggingface(repo_id: str, filename: str, output_dir: Path
 def download_disc_from_modelscope(dataset_id: str, filename: str, output_dir: Path) -> None:
     if not dataset_id:
         raise RuntimeError("DISC-Law-SFT ModelScope dataset id is empty.")
-    rows = load_ms_dataset_rows(dataset_id, "train")
-    export_rows(rows, output_dir / filename)
+    output_file = output_dir / filename
+    if output_file.exists() and output_file.stat().st_size > 0:
+        print(f"Skip existing DISC-Law-SFT file: {output_file}")
+        return
+    dataset = load_ms_dataset(dataset_id, "train")
+    export_dataset_like(dataset, output_file)
 
 
 def prepare_disc_dataset(config: dict[str, Any], raw_dir: Path) -> None:

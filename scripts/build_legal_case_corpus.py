@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from common import (
+    ensure_dir,
     load_config,
     project_root,
-    read_jsonl,
     resolve_path,
     write_json,
     write_jsonl,
@@ -76,6 +77,65 @@ def filter_case(
     return True
 
 
+def iter_jsonl(path: Path) -> Iterable[dict[str, Any]]:
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            yield json.loads(line)
+
+
+def count_top_charges(
+    train_file: Path,
+    max_fact_chars: int,
+    min_fact_chars: int,
+    single_charge_only: bool,
+    top_k: int,
+) -> list[str]:
+    charge_counter = Counter()
+    for idx, row in enumerate(iter_jsonl(train_file)):
+        item = normalize_case(row, idx, max_fact_chars)
+        if filter_case(item, None, min_fact_chars, single_charge_only):
+            charge_counter[item["charges"][0]] += 1
+    return [name for name, _ in charge_counter.most_common(top_k)]
+
+
+def write_filtered_train_candidates(
+    train_file: Path,
+    output_file: Path,
+    max_fact_chars: int,
+    min_fact_chars: int,
+    single_charge_only: bool,
+    top_charge_set: set[str],
+) -> int:
+    ensure_dir(output_file.parent)
+    count = 0
+    with output_file.open("w", encoding="utf-8") as f:
+        for idx, row in enumerate(iter_jsonl(train_file)):
+            item = normalize_case(row, idx, max_fact_chars)
+            if not filter_case(item, top_charge_set, min_fact_chars, single_charge_only):
+                continue
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+            count += 1
+    return count
+
+
+def select_filtered_cases(
+    rows: list[dict[str, Any]],
+    max_fact_chars: int,
+    min_fact_chars: int,
+    single_charge_only: bool,
+    top_charge_set: set[str],
+) -> list[dict[str, Any]]:
+    selected = []
+    for idx, row in enumerate(rows):
+        item = normalize_case(row, idx, max_fact_chars)
+        if filter_case(item, top_charge_set, min_fact_chars, single_charge_only):
+            selected.append(item)
+    return selected
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -89,77 +149,56 @@ def main() -> None:
     processed_dir = resolve_path(config["paths"]["processed_dir"])
     build_cfg = config["build"]
 
-    train_rows = read_jsonl(raw_dir / "train.jsonl")
-    valid_rows = read_jsonl(raw_dir / "validation.jsonl")
+    train_file = raw_dir / "train.jsonl"
+    valid_rows = list(iter_jsonl(raw_dir / "validation.jsonl"))
     test_file = raw_dir / "test.jsonl"
-    test_rows = read_jsonl(test_file) if test_file.exists() else []
+    test_rows = list(iter_jsonl(test_file)) if test_file.exists() else []
 
-    normalized_train = [
-        normalize_case(row, idx, build_cfg["max_fact_chars"])
-        for idx, row in enumerate(train_rows)
-    ]
-
-    charge_counter = Counter()
-    for item in normalized_train:
-        if len(item["charges"]) == 1:
-            charge_counter[item["charges"][0]] += 1
-    top_charges = [name for name, _ in charge_counter.most_common(build_cfg["top_k_charges"])]
+    top_charges = count_top_charges(
+        train_file=train_file,
+        max_fact_chars=build_cfg["max_fact_chars"],
+        min_fact_chars=build_cfg["min_fact_chars"],
+        single_charge_only=build_cfg["single_charge_only"],
+        top_k=build_cfg["top_k_charges"],
+    )
     top_charge_set = set(top_charges)
+    train_candidates_count = write_filtered_train_candidates(
+        train_file=train_file,
+        output_file=processed_dir / "train_candidates.jsonl",
+        max_fact_chars=build_cfg["max_fact_chars"],
+        min_fact_chars=build_cfg["min_fact_chars"],
+        single_charge_only=build_cfg["single_charge_only"],
+        top_charge_set=top_charge_set,
+    )
 
-    normalized_valid = [
-        normalize_case(row, idx, build_cfg["max_fact_chars"])
-        for idx, row in enumerate(valid_rows)
-    ]
-    normalized_test = [
-        normalize_case(row, idx, build_cfg["max_fact_chars"])
-        for idx, row in enumerate(test_rows)
-    ]
-
-    train_candidates = [
-        item
-        for item in normalized_train
-        if filter_case(
-            item,
-            top_charge_set,
-            build_cfg["min_fact_chars"],
-            build_cfg["single_charge_only"],
-        )
-    ]
-    target_dev = [
-        item
-        for item in normalized_valid[: build_cfg["max_target_samples"]]
-        if filter_case(
-            item,
-            top_charge_set,
-            build_cfg["min_fact_chars"],
-            build_cfg["single_charge_only"],
-        )
-    ]
-    eval_test = [
-        item
-        for item in (normalized_test or normalized_valid[build_cfg["max_target_samples"] :])
-        if filter_case(
-            item,
-            top_charge_set,
-            build_cfg["min_fact_chars"],
-            build_cfg["single_charge_only"],
-        )
-    ]
-
-    write_jsonl(train_candidates, processed_dir / "train_candidates.jsonl")
+    target_dev = select_filtered_cases(
+        rows=valid_rows[: build_cfg["max_target_samples"]],
+        max_fact_chars=build_cfg["max_fact_chars"],
+        min_fact_chars=build_cfg["min_fact_chars"],
+        single_charge_only=build_cfg["single_charge_only"],
+        top_charge_set=top_charge_set,
+    )
+    eval_source_rows = test_rows or valid_rows[build_cfg["max_target_samples"] :]
+    eval_test = select_filtered_cases(
+        rows=eval_source_rows,
+        max_fact_chars=build_cfg["max_fact_chars"],
+        min_fact_chars=build_cfg["min_fact_chars"],
+        single_charge_only=build_cfg["single_charge_only"],
+        top_charge_set=top_charge_set,
+    )
     write_jsonl(target_dev, processed_dir / "target_dev.jsonl")
     write_jsonl(eval_test, processed_dir / "eval_test.jsonl")
     write_json(
         {
             "top_charges": top_charges,
-            "train_candidates": len(train_candidates),
+            "train_candidates": train_candidates_count,
             "target_dev": len(target_dev),
             "eval_test": len(eval_test),
         },
         processed_dir / "charge_vocab.json",
     )
 
-    print(f"Saved train candidates: {len(train_candidates)}")
+    print(f"Saved train candidates: {train_candidates_count}")
     print(f"Saved target dev: {len(target_dev)}")
     print(f"Saved eval test: {len(eval_test)}")
 
