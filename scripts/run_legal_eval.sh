@@ -31,6 +31,11 @@ if [ ! -f "${MODEL_DIR}/config.json" ]; then
 fi
 
 TASK_INCLUDE_PATH="${PROJECT_ROOT}/lm_eval_tasks"
+EVAL_LIMIT="${EVAL_LIMIT:-1000}"
+EVAL_ARGS=()
+if [ -n "${EVAL_LIMIT}" ] && [ "${EVAL_LIMIT}" != "0" ]; then
+  EVAL_ARGS=(--limit "${EVAL_LIMIT}")
+fi
 
 cd "${LMEVAL_ROOT}"
 
@@ -42,4 +47,5 @@ lm-eval run \
   --device "${DEVICE:-cuda:0}" \
   --batch_size "${BATCH_SIZE:-4}" \
   --include_path "${TASK_INCLUDE_PATH}" \
-  --output_path "${PROJECT_ROOT}/outputs/lm_eval_$(basename "${MODEL_DIR}")"
+  --output_path "${PROJECT_ROOT}/outputs/lm_eval_$(basename "${MODEL_DIR}")" \
+  "${EVAL_ARGS[@]}"

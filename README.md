@@ -100,6 +100,14 @@ export SFT_EVAL_STEPS=500
 export SFT_PER_DEVICE_EVAL_BATCH_SIZE=8
 ```
 
+For `lm-eval`, the default wrapper limits the first run to `1000` examples to
+avoid evaluating the full held-out set. Useful overrides:
+
+```bash
+export EVAL_LIMIT=1000
+export BATCH_SIZE=8
+```
+
 If Hugging Face is unstable on AutoDL, you can switch data/model downloads with
 environment variables before running the bootstrap:
 
