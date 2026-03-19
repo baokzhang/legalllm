@@ -2,13 +2,18 @@
 set -euo pipefail
 
 pick_host_python() {
-  local candidate
-  for candidate in "${LEGAL_LLM_PYTHON_BIN:-}" python3.10 python3.11 python3; do
+  local candidate major minor
+  for candidate in "${LEGAL_LLM_PYTHON_BIN:-}" python3.10 python3.11 python3.9 python3; do
     if [ -n "${candidate}" ] && command -v "${candidate}" >/dev/null 2>&1; then
-      command -v "${candidate}"
-      return 0
+      major="$("${candidate}" -c 'import sys; print(sys.version_info.major)')"
+      minor="$("${candidate}" -c 'import sys; print(sys.version_info.minor)')"
+      if [ "${major}" = "3" ] && [ "${minor}" -le 11 ]; then
+        command -v "${candidate}"
+        return 0
+      fi
     fi
   done
+  echo "No supported Python interpreter found. Install python3.10 or python3.11, or set LEGAL_LLM_PYTHON_BIN to one of them." >&2
   return 1
 }
 
