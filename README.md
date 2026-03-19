@@ -60,6 +60,35 @@ bash scripts/run_merge_adapter.sh outputs/dpo-qwen2.5-3b-lora outputs/dpo-qwen2.
 bash scripts/run_legal_eval.sh outputs/dpo-qwen2.5-3b-merged
 ```
 
+## AutoDL split workflow
+
+If you want to boot AutoDL without a GPU first, use this two-stage flow.
+
+No-GPU stage:
+
+```bash
+source scripts/set_cache_env.sh
+bash scripts/run_bootstrap_no_gpu.sh
+```
+
+This stage will:
+
+- create the Python environment
+- install dependencies
+- download public datasets
+- build the lightweight case corpus and held-out eval files
+- prefetch the base model and embedding model into `/root/autodl-tmp`
+
+After you attach a GPU:
+
+```bash
+source scripts/set_cache_env.sh
+bash scripts/run_prepare_training_data.sh
+bash scripts/run_legal_sft.sh
+bash scripts/run_merge_adapter.sh outputs/sft-qwen2.5-3b-lora outputs/sft-qwen2.5-3b-merged
+bash scripts/run_legal_eval.sh outputs/sft-qwen2.5-3b-merged
+```
+
 ## Local workstation -> AutoDL
 
 Recommended approach:
@@ -94,8 +123,7 @@ export LMEVAL_ROOT=/root/autodl-tmp/legal-workspace/lm-evaluation-harness
 
 cd /root/autodl-tmp/legal-workspace/LegalLLM-ClosedLoop
 source scripts/set_cache_env.sh
-bash scripts/prepare_autodl_env.sh
-bash scripts/run_prepare_data.sh
+bash scripts/run_bootstrap_no_gpu.sh
 ```
 
 If you clone all three repositories as siblings, the scripts also work without
