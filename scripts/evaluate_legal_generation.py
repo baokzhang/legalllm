@@ -160,6 +160,7 @@ def main() -> None:
         trust_remote_code=True,
         use_fast=False,
     )
+    tokenizer.padding_side = "left"
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
     dtype_map = {
@@ -169,11 +170,17 @@ def main() -> None:
     }
     model = AutoModelForCausalLM.from_pretrained(
         args.model_path,
-        torch_dtype=dtype_map.get(args.torch_dtype, torch.bfloat16),
+        dtype=dtype_map.get(args.torch_dtype, torch.bfloat16),
         trust_remote_code=True,
         device_map={"": args.device},
     )
     model.eval()
+    # Qwen instruct checkpoints may ship sampling defaults that conflict with deterministic generation.
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        model.generation_config.do_sample = False
+        for attr in ("temperature", "top_p", "top_k"):
+            if hasattr(model.generation_config, attr):
+                setattr(model.generation_config, attr, None)
 
     prediction_rows: list[dict[str, Any]] = []
     stats = {
