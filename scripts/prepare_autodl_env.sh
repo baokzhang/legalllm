@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+pick_host_python() {
+  local candidate
+  for candidate in "${LEGAL_LLM_PYTHON_BIN:-}" python3.10 python3.11 python3; do
+    if [ -n "${candidate}" ] && command -v "${candidate}" >/dev/null 2>&1; then
+      command -v "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
 prepare_autodl_env() {
   local script_dir project_root workspace_root lmeval_root dep_profile req_file
+  local host_python host_python_version host_python_tag env_state_file
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   project_root="$(cd "${script_dir}/.." && pwd)"
   workspace_root="$(cd "${project_root}/.." && pwd)"
@@ -25,11 +37,14 @@ prepare_autodl_env() {
     conda activate legal-llm
     export PYTHON_BIN="${PYTHON_BIN:-python}"
   else
-    export PYTHON_BIN="${PYTHON_BIN:-python3}"
+    host_python="$(pick_host_python)"
+    host_python_version="$("${host_python}" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    host_python_tag="py$(echo "${host_python_version}" | tr -d '.')"
+    export LEGAL_LLM_HOST_PYTHON="${host_python}"
     export LEGAL_LLM_ENV_NAME="${LEGAL_LLM_ENV_NAME:-legal-llm}"
-    export VENV_DIR="${VENV_DIR:-${AUTODL_TMP_ROOT}/envs/${LEGAL_LLM_ENV_NAME}}"
+    export VENV_DIR="${VENV_DIR:-${AUTODL_TMP_ROOT}/envs/${LEGAL_LLM_ENV_NAME}-${host_python_tag}}"
     if [ ! -x "${VENV_DIR}/bin/python" ]; then
-      "${PYTHON_BIN}" -m venv "${VENV_DIR}"
+      "${host_python}" -m venv "${VENV_DIR}"
     fi
     source "${VENV_DIR}/bin/activate"
     export PYTHON_BIN="${VENV_DIR}/bin/python"
@@ -42,9 +57,20 @@ prepare_autodl_env() {
     "${PYTHON_BIN}" -m pip install -e "${lmeval_root}"
   fi
 
+  env_state_file="${project_root}/data/processed/project_env.sh"
+  mkdir -p "$(dirname "${env_state_file}")"
+  cat > "${env_state_file}" <<EOF
+#!/usr/bin/env bash
+export LEGAL_LLM_ENV_NAME="${LEGAL_LLM_ENV_NAME:-legal-llm}"
+export VENV_DIR="${VENV_DIR:-}"
+export PYTHON_BIN="${PYTHON_BIN}"
+export LEGAL_LLM_HOST_PYTHON="${LEGAL_LLM_HOST_PYTHON:-}"
+EOF
+
   echo "Environment is ready."
   echo "LEGAL_LLM_DEP_PROFILE=${dep_profile}"
   echo "PYTHON_BIN=${PYTHON_BIN}"
+  echo "Saved project env file to ${env_state_file}"
 }
 
 prepare_autodl_env "$@"

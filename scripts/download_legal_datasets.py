@@ -12,10 +12,19 @@ from huggingface_hub import hf_hub_download
 
 from common import ensure_dir, load_config, project_root, resolve_path
 
+MODELSCOPE_IMPORT_ERROR = ""
 try:
     from modelscope.msdatasets import MsDataset
-except ImportError:  # pragma: no cover - optional dependency in local dev
-    MsDataset = None
+except Exception as exc1:  # pragma: no cover - optional dependency in local dev
+    try:
+        from modelscope import MsDataset  # type: ignore[attr-defined]
+        MODELSCOPE_IMPORT_ERROR = f"fallback import used after: {type(exc1).__name__}: {exc1}"
+    except Exception as exc2:
+        MsDataset = None
+        MODELSCOPE_IMPORT_ERROR = (
+            f"{type(exc1).__name__}: {exc1}; "
+            f"fallback import failed with {type(exc2).__name__}: {exc2}"
+        )
 
 
 def export_dataset_dict(dataset_dict: DatasetDict, output_dir: Path) -> None:
@@ -52,7 +61,11 @@ def env_or_config(env_key: str, config_value: str | None, default: str = "") -> 
 
 def load_ms_dataset_rows(dataset_id: str, split: str) -> list[dict[str, Any]]:
     if MsDataset is None:
-        raise RuntimeError("ModelScope is not installed. Please rerun environment bootstrap.")
+        raise RuntimeError(
+            "ModelScope import failed. "
+            "This is often caused by an incompatible Python version in the venv. "
+            f"Import detail: {MODELSCOPE_IMPORT_ERROR}"
+        )
     dataset = MsDataset.load(dataset_id, split=split)
     hf_dataset = getattr(dataset, "_hf_ds", dataset)
     return list(hf_dataset)
