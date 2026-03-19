@@ -13,7 +13,23 @@ LMEVAL_ROOT="${LMEVAL_ROOT:-${WORKSPACE_ROOT}/lm-evaluation-harness}"
 
 source "${SCRIPT_DIR}/activate_project_env.sh"
 
-MODEL_DIR="$1"
+MODEL_DIR_INPUT="$1"
+if [[ "${MODEL_DIR_INPUT}" = /* ]]; then
+  MODEL_DIR="${MODEL_DIR_INPUT}"
+else
+  MODEL_DIR="${PROJECT_ROOT}/${MODEL_DIR_INPUT#./}"
+fi
+
+if [ ! -d "${MODEL_DIR}" ]; then
+  echo "Merged model directory not found: ${MODEL_DIR_INPUT}"
+  exit 1
+fi
+
+if [ ! -f "${MODEL_DIR}/config.json" ]; then
+  echo "Merged model directory is missing config.json: ${MODEL_DIR}"
+  exit 1
+fi
+
 TASK_INCLUDE_PATH="${PROJECT_ROOT}/lm_eval_tasks"
 
 cd "${LMEVAL_ROOT}"
