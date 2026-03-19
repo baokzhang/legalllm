@@ -12,7 +12,6 @@ from common import (
     project_root,
     resolve_path,
     write_json,
-    write_jsonl,
 )
 
 
@@ -121,19 +120,30 @@ def write_filtered_train_candidates(
     return count
 
 
-def select_filtered_cases(
-    rows: list[dict[str, Any]],
+def write_filtered_cases(
+    source_file: Path,
+    output_file: Path,
     max_fact_chars: int,
     min_fact_chars: int,
     single_charge_only: bool,
     top_charge_set: set[str],
-) -> list[dict[str, Any]]:
-    selected = []
-    for idx, row in enumerate(rows):
-        item = normalize_case(row, idx, max_fact_chars)
-        if filter_case(item, top_charge_set, min_fact_chars, single_charge_only):
-            selected.append(item)
-    return selected
+    start_index: int = 0,
+    max_items: int | None = None,
+) -> int:
+    ensure_dir(output_file.parent)
+    count = 0
+    with output_file.open("w", encoding="utf-8") as f:
+        for idx, row in enumerate(iter_jsonl(source_file)):
+            if idx < start_index:
+                continue
+            item = normalize_case(row, idx, max_fact_chars)
+            if not filter_case(item, top_charge_set, min_fact_chars, single_charge_only):
+                continue
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+            count += 1
+            if max_items is not None and count >= max_items:
+                break
+    return count
 
 
 def main() -> None:
@@ -150,9 +160,8 @@ def main() -> None:
     build_cfg = config["build"]
 
     train_file = raw_dir / "train.jsonl"
-    valid_rows = list(iter_jsonl(raw_dir / "validation.jsonl"))
+    valid_file = raw_dir / "validation.jsonl"
     test_file = raw_dir / "test.jsonl"
-    test_rows = list(iter_jsonl(test_file)) if test_file.exists() else []
 
     top_charges = count_top_charges(
         train_file=train_file,
@@ -171,36 +180,49 @@ def main() -> None:
         top_charge_set=top_charge_set,
     )
 
-    target_dev = select_filtered_cases(
-        rows=valid_rows[: build_cfg["max_target_samples"]],
+    target_dev_count = write_filtered_cases(
+        source_file=valid_file,
+        output_file=processed_dir / "target_dev.jsonl",
         max_fact_chars=build_cfg["max_fact_chars"],
         min_fact_chars=build_cfg["min_fact_chars"],
         single_charge_only=build_cfg["single_charge_only"],
         top_charge_set=top_charge_set,
+        max_items=build_cfg["max_target_samples"],
     )
-    eval_source_rows = test_rows or valid_rows[build_cfg["max_target_samples"] :]
-    eval_test = select_filtered_cases(
-        rows=eval_source_rows,
-        max_fact_chars=build_cfg["max_fact_chars"],
-        min_fact_chars=build_cfg["min_fact_chars"],
-        single_charge_only=build_cfg["single_charge_only"],
-        top_charge_set=top_charge_set,
-    )
-    write_jsonl(target_dev, processed_dir / "target_dev.jsonl")
-    write_jsonl(eval_test, processed_dir / "eval_test.jsonl")
+
+    if test_file.exists() and test_file.stat().st_size > 0:
+        eval_test_count = write_filtered_cases(
+            source_file=test_file,
+            output_file=processed_dir / "eval_test.jsonl",
+            max_fact_chars=build_cfg["max_fact_chars"],
+            min_fact_chars=build_cfg["min_fact_chars"],
+            single_charge_only=build_cfg["single_charge_only"],
+            top_charge_set=top_charge_set,
+        )
+    else:
+        eval_test_count = write_filtered_cases(
+            source_file=valid_file,
+            output_file=processed_dir / "eval_test.jsonl",
+            max_fact_chars=build_cfg["max_fact_chars"],
+            min_fact_chars=build_cfg["min_fact_chars"],
+            single_charge_only=build_cfg["single_charge_only"],
+            top_charge_set=top_charge_set,
+            start_index=build_cfg["max_target_samples"],
+        )
+
     write_json(
         {
             "top_charges": top_charges,
             "train_candidates": train_candidates_count,
-            "target_dev": len(target_dev),
-            "eval_test": len(eval_test),
+            "target_dev": target_dev_count,
+            "eval_test": eval_test_count,
         },
         processed_dir / "charge_vocab.json",
     )
 
     print(f"Saved train candidates: {train_candidates_count}")
-    print(f"Saved target dev: {len(target_dev)}")
-    print(f"Saved eval test: {len(eval_test)}")
+    print(f"Saved target dev: {target_dev_count}")
+    print(f"Saved eval test: {eval_test_count}")
 
 
 if __name__ == "__main__":
